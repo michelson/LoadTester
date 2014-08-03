@@ -28,13 +28,11 @@ Max reponse 0.54 secs , Min response 0.33 secs
 
 ## Gotchas
 
-In OSX you could find an limit connection issue, it could be fixed by doing
+In OSX you could find a limit connection issue, it could be fixed by doing
 
 ```sudo launchctl limit maxfiles 1000000 1000000```
 
 To make this permanent (i.e not reset when you reboot), create /etc/launchd.conf containing:
-
-In Unix/linux you can do:
 
 ```limit maxfiles 1000000 1000000```
 
