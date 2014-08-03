@@ -21,9 +21,16 @@ Flags:
 
 ##Response:
 ```
-Process terminated: 3.631 seconds taken
-Jobs processed: 11 , Failed 0.0
-Max reponse 0.54 secs , Min response 0.33 secs
+Document Path: http://domain.com
+Server Software: nginx/1.4.6 (Ubuntu)
+Time taken for tests: 1.505 seconds
+Completed requests: 9 , Failed requests 0.0 %
+Slowest reponse 0.59 secs , Fastest response 0.30 secs
+Concurrency: 2
+Requests per second 5.32
+Time per request 0.33
+Total Transfer: 50544 bytes
+Transfer_rate: 32.804
 ```
 
 ## Gotchas
@@ -42,7 +49,6 @@ To make this permanent (i.e not reset when you reboot), create /etc/launchd.conf
 + Configurable Timeouts
 + Document Length
 + Classify errors by failed reqs, broken pipes and exceptions
-+ Response codes , show non 200 status
 + Transfer Rate
 + Change to a less boring name.
 
