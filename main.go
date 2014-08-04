@@ -122,7 +122,7 @@ func getStats() {
 
 	//fmt.Println(response_times)
 	fmt.Println("Total Transfer:", total_transferred, "bytes")
-	fmt.Printf("Transfer_rate: %.3f", TransferRate(seconds))
+	fmt.Printf("Transfer_rate: %.3f\n", TransferRate(seconds))
 	if non_2xx > 0 {
 		fmt.Println("Non-2xx:", non_2xx)
 	}
