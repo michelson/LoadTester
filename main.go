@@ -10,29 +10,33 @@ import (
 	"time"
 )
 
-var num_reqs = flag.Int64("n", 10, "Number of requests.")
-var concurrency = flag.Int("c", 1, "Concurrency for requests")
-var url = flag.String("u", "", "Url to send requests")
-var verbose = flag.Bool("v", false, "Show ongoing request results")
+// Flags
+var (
+	num_reqs    = flag.Int64("n", 10, "Number of requests.")
+	concurrency = flag.Int("c", 1, "Concurrency for requests")
+	url         = flag.String("u", "", "Url to send requests")
+	verbose     = flag.Bool("v", false, "Show ongoing request results")
+)
 
-var req_result map[string]int64 = make(map[string]int64, 0)
-var global_time map[string]int64 = make(map[string]int64)
-var response_times []float64
-var error_counts int64
-var current_job int64
-var status_codes []int
-var non_2xx int64
-var document_length int64
-var server_software string
-var is_first bool = false
-var total_transferred int64
-var totalread float64
+var (
+	req_result        map[string]int64 = make(map[string]int64, 0)
+	global_time       map[string]int64 = make(map[string]int64)
+	response_times    []float64
+	error_counts      int64
+	current_job       int64
+	status_codes      []int
+	non_2xx           int64
+	document_length   int64
+	server_software   string
+	is_first          bool
+	total_transferred int64
+	totalread         float64
+)
 
 func main() {
+	flag.Parse()
 
 	checkCommands()
-
-	flag.Parse()
 
 	global_time["start"] = time.Now().UnixNano()
 
@@ -58,7 +62,6 @@ func executeJobs(ccy int) {
 }
 
 func sendRequest(url string, index int, wg *sync.WaitGroup) {
-
 	defer wg.Done()
 
 	start_time := time.Now().UnixNano()
@@ -110,16 +113,16 @@ func getStats() {
 	fmt.Println("Document Path:", *url)
 	//fmt.Println("Document Length", document_length)
 	fmt.Println("Server Software:", server_software)
-	fmt.Println(fmt.Sprintf("Time taken for tests: %.3f seconds", seconds))
-	fmt.Println(fmt.Sprintf("Completed requests: %d , Failed requests %.1f", current_job, percent(error_counts, current_job)), "%")
-	fmt.Println(fmt.Sprintf("Slowest reponse %.2f secs , Fastest response %.2f secs", findMax(), findMin()))
+	fmt.Printf("Time taken for tests: %.3f seconds\n", seconds)
+	fmt.Printf("Completed requests: %d , Failed requests %.1f\n", current_job, percent(error_counts, current_job))
+	fmt.Printf("Slowest reponse %.2f secs , Fastest response %.2f secs\n", findMax(), findMin())
 	fmt.Println("Concurrency:", *concurrency)
-	fmt.Println(fmt.Sprintf("Requests per second %.2f", RequestPerSecond(seconds)))
-	fmt.Println(fmt.Sprintf("Time per request %.2f", TimePerRequest(seconds)))
+	fmt.Printf("Requests per second %.2f\n", RequestPerSecond(seconds))
+	fmt.Printf("Time per request %.2f\n", TimePerRequest(seconds))
 
 	//fmt.Println(response_times)
 	fmt.Println("Total Transfer:", total_transferred, "bytes")
-	fmt.Println(fmt.Sprintf("Transfer_rate: %.3f", TransferRate(seconds)))
+	fmt.Printf("Transfer_rate: %.3f", TransferRate(seconds))
 	if non_2xx > 0 {
 		fmt.Println("Non-2xx:", non_2xx)
 	}
@@ -161,8 +164,8 @@ func findMin() float64 {
 }
 
 func Usage() {
-	fmt.Println("Hey there , you need to pass some options for this to work")
-	fmt.Println("\nFlags:")
+	fmt.Println("Hey there, you need to pass some options for this to work\n")
+	fmt.Println("Flags:")
 	flag.Parse()
 	flag.PrintDefaults()
 }
