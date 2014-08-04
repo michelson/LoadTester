@@ -3,11 +3,11 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"os"
 	"sync"
 	"time"
-  "io/ioutil"
 )
 
 var num_reqs = flag.Int64("n", 10, "Number of requests.")
@@ -70,36 +70,36 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 		error_counts += 1
 	}
 
-  if response.StatusCode > 206 {
-    //addStatusCode(response.StatusCode)
-    non_2xx += 1
-  }
+	if response.StatusCode > 206 {
+		//addStatusCode(response.StatusCode)
+		non_2xx += 1
+	}
 
-  contents, err := ioutil.ReadAll(response.Body)
-  if err == nil {
-    totalread += float64(len(contents))
-    total_transferred += int64(len(contents))
+	contents, err := ioutil.ReadAll(response.Body)
+	if err == nil {
+		totalread += float64(len(contents))
+		total_transferred += int64(len(contents))
 
-    if !is_first {
-      is_first = true
-      //fmt.Println(response.ContentLength)
-      if len(response.Header["Server"]) > 0 {
-        server_software = response.Header["Server"][0]
-      }
+		if !is_first {
+			is_first = true
+			//fmt.Println(response.ContentLength)
+			if len(response.Header["Server"]) > 0 {
+				server_software = response.Header["Server"][0]
+			}
 
-      document_length = response.ContentLength
-    }
-    //totalread += float64(response.ContentLength)
-  }
+			document_length = response.ContentLength
+		}
+		//totalread += float64(response.ContentLength)
+	}
 
-  //fmt.Println(response.ContentLength)
-  response.Body.Close()
+	//fmt.Println(response.ContentLength)
+	response.Body.Close()
 
 	end_time := time.Now().UnixNano()
 	secs := toSecs(end_time - start_time)
-  if err == nil {
-    response_times = append(response_times, secs)
-  }
+	if err == nil {
+		response_times = append(response_times, secs)
+	}
 	if *verbose {
 		fmt.Println(fmt.Sprintf("Request sent: %.2f secs", secs))
 	}
@@ -107,22 +107,22 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 
 func getStats() {
 	seconds := toSecs(global_time["end"] - global_time["start"])
-  fmt.Println("Document Path:", *url)
-  //fmt.Println("Document Length", document_length)
-  fmt.Println("Server Software:", server_software)
+	fmt.Println("Document Path:", *url)
+	//fmt.Println("Document Length", document_length)
+	fmt.Println("Server Software:", server_software)
 	fmt.Println(fmt.Sprintf("Time taken for tests: %.3f seconds", seconds))
 	fmt.Println(fmt.Sprintf("Completed requests: %d , Failed requests %.1f", current_job, percent(error_counts, current_job)), "%")
 	fmt.Println(fmt.Sprintf("Slowest reponse %.2f secs , Fastest response %.2f secs", findMax(), findMin()))
 	fmt.Println("Concurrency:", *concurrency)
-  fmt.Println(fmt.Sprintf("Requests per second %.2f", RequestPerSecond(seconds)))
-  fmt.Println(fmt.Sprintf("Time per request %.2f", TimePerRequest(seconds)))
+	fmt.Println(fmt.Sprintf("Requests per second %.2f", RequestPerSecond(seconds)))
+	fmt.Println(fmt.Sprintf("Time per request %.2f", TimePerRequest(seconds)))
 
-  //fmt.Println(response_times)
-  fmt.Println("Total Transfer:", total_transferred , "bytes")
-  fmt.Println(fmt.Sprintf("Transfer_rate: %.3f", TransferRate(seconds) ) )
-  if non_2xx > 0 {
-    fmt.Println("Non-2xx:", non_2xx)
-  }
+	//fmt.Println(response_times)
+	fmt.Println("Total Transfer:", total_transferred, "bytes")
+	fmt.Println(fmt.Sprintf("Transfer_rate: %.3f", TransferRate(seconds)))
+	if non_2xx > 0 {
+		fmt.Println("Non-2xx:", non_2xx)
+	}
 }
 
 func toSecs(secs int64) float64 {
@@ -174,7 +174,7 @@ func checkCommands() {
 		os.Exit(1)
 	}
 
-  flag.Parse()
+	flag.Parse()
 
 	if *url == "" {
 		fmt.Println("You need to pass an url to test, -u")
@@ -183,38 +183,37 @@ func checkCommands() {
 	}
 }
 
-func TransferRate(timetaken float64) float64{
-  return totalread / 1024 / timetaken
+func TransferRate(timetaken float64) float64 {
+	return totalread / 1024 / timetaken
 }
 
 /*
 Time per request
 The average time spent per request.
 */
-func TimePerRequest(seconds float64) float64{
-  return float64(*concurrency) * seconds / float64(current_job)
+func TimePerRequest(seconds float64) float64 {
+	return float64(*concurrency) * seconds / float64(current_job)
 }
 
 //Requests per second
 /*This is the number of requests per second.
 This value is the result of dividing the number of requests by the total time taken*/
-func RequestPerSecond(seconds float64) float64{
-  var n float64
-  n = float64(*num_reqs)
-  return float64(n / float64(seconds))
+func RequestPerSecond(seconds float64) float64 {
+	var n float64
+	n = float64(*num_reqs)
+	return float64(n / float64(seconds))
 }
 
-
 // maybe convert this in map like {200 => 100 , 500 => 20, 401=> 3 }
-func addStatusCode(status_code int){
-  exists := false
-  for _ , status := range(status_codes){
-    if status_code == status {
-     exists = true
-     break
-    }
-  }
-  if !exists{
-    status_codes = append(status_codes , status_code)
-  }
+func addStatusCode(status_code int) {
+	exists := false
+	for _, status := range status_codes {
+		if status_code == status {
+			exists = true
+			break
+		}
+	}
+	if !exists {
+		status_codes = append(status_codes, status_code)
+	}
 }
