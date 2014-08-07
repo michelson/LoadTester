@@ -60,10 +60,7 @@ func main() {
 	flag.Parse()
 
 	Bar = pb.New(int(*num_reqs))
-	Bar.Format("ooo")
 	//Bar.Format("")
-
-	//Bar.SetUnits(pb.U_BYTES)
 
 	checkCommands()
 
@@ -71,11 +68,12 @@ func main() {
 
 	global_time["start"] = time.Now().UnixNano()
 
-	current_job = 1
+	current_job = 0
 
 	Bar.Start()
 
-	for current_job <= *num_reqs {
+	for current_job < *num_reqs {
+		//fmt.Println("CURRENT", current_job)
 		executeJobs(*concurrency)
 	}
 
@@ -87,12 +85,14 @@ func main() {
 
 func executeJobs(ccy int) {
 	wg := new(sync.WaitGroup)
-	for i := 1; i <= ccy; i++ {
-		wg.Add(1)
-		current_job += 1
-		go sendRequest(*url, i, wg)
-	}
-
+		for i := 1; i <= ccy; i++ {
+			if current_job < *num_reqs {
+				wg.Add(1)
+				current_job += 1
+				//fmt.Println(i, "-", current_job)
+				go sendRequest(*url, i, wg)
+			}
+		}
 	wg.Wait()
 }
 
@@ -162,7 +162,7 @@ func getStats() {
 	fmt.Printf("Time per request %.2f\n", TimePerRequest(seconds))
 
 	//fmt.Println(response_times)
-	//fmt.Println("status_codes", status_codes)
+	fmt.Println("status_codes", status_codes)
 	fmt.Println("Total Transfer:", total_transferred, "bytes")
 	fmt.Printf("Transfer_rate: %.3f\n", TransferRate(seconds))
 	if non_2xx > 0 {
@@ -247,28 +247,31 @@ func parseCookieFile() []*http.Cookie {
 	lines := ReadLines(*cookie_file)
 	cookies := make([]*http.Cookie, 0)
 	for _, line := range lines {
-		line_res := make(map[string]string)
 		options := strings.Split(line, ";")
+		c := &http.Cookie{}
 		for _, option := range options {
 			key_value := strings.Split(option, "=")
 			key_value[0] = strings.Trim(key_value[0], " ")
 			switch key_value[0] {
 			case "path":
-				line_res["path"] = key_value[1]
+				c.Path = key_value[1]
 			case "domain":
-				line_res["domain"] = key_value[1]
+				c.Domain = key_value[1]
 			//case "expires":
 			//    line_res["expires"] = key_value[1]
 			default:
-				line_res["name"] = key_value[0]
-				line_res["value"] = key_value[1]
+				if len(key_value) == 2 {
+					c.Name = key_value[0]
+					c.Value = key_value[1]
+				}else{
+					if key_value[0] == "HttpOnly"{
+						c.HttpOnly = true
+					}
+				}
+
 			}
 		}
-		c := &http.Cookie{}
-		c.Name = line_res["name"]
-		c.Value = line_res["value"]
-		c.Domain = line_res["domain"]
-		c.Path = line_res["path"]
+
 		cookies = append(cookies, c)
 	}
 	//fmt.Println("cookies", cookies)
