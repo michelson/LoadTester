@@ -13,6 +13,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"github.com/rakyll/pb"
 )
 
 // Flags
@@ -51,10 +52,18 @@ var (
 	headers  [][]string
 )
 
+var Bar *pb.ProgressBar
+
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
 
 	flag.Parse()
+
+	Bar = pb.New(int(*num_reqs))
+	Bar.Format("ooo")
+	//Bar.Format("")
+
+	//Bar.SetUnits(pb.U_BYTES)
 
 	checkCommands()
 
@@ -63,11 +72,15 @@ func main() {
 	global_time["start"] = time.Now().UnixNano()
 
 	current_job = 1
+
+	Bar.Start()
+
 	for current_job <= *num_reqs {
 		executeJobs(*concurrency)
 	}
 
 	global_time["end"] = time.Now().UnixNano()
+	Bar.FinishPrint("Tasks completed")
 
 	getStats()
 }
@@ -85,6 +98,7 @@ func executeJobs(ccy int) {
 
 func sendRequest(url string, index int, wg *sync.WaitGroup) {
 	defer wg.Done()
+	Bar.Increment()
 
 	start_time := time.Now().UnixNano()
 	//response, err := http.Get(url)
@@ -96,7 +110,9 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 		}
 		error_counts += 1
 	}
-
+	if err != nil {
+		return
+	}
 	if response.StatusCode > 206 {
 		addStatusCode(response.StatusCode)
 		non_2xx += 1
@@ -129,7 +145,7 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 		response_times = append(response_times, secs)
 	}
 	if *verbose {
-		fmt.Println(fmt.Sprintf("Request sent: %.2f secs", secs))
+		//fmt.Println(fmt.Sprintf("Request sent: %.2f secs", secs))
 	}
 }
 
