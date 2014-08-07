@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"github.com/rakyll/pb"
 	"io"
 	"io/ioutil"
 	"log"
@@ -13,7 +14,6 @@ import (
 	"strings"
 	"sync"
 	"time"
-	"github.com/rakyll/pb"
 )
 
 // Flags
@@ -85,14 +85,14 @@ func main() {
 
 func executeJobs(ccy int) {
 	wg := new(sync.WaitGroup)
-		for i := 1; i <= ccy; i++ {
-			if current_job < *num_reqs {
-				wg.Add(1)
-				current_job += 1
-				//fmt.Println(i, "-", current_job)
-				go sendRequest(*url, i, wg)
-			}
+	for i := 1; i <= ccy; i++ {
+		if current_job < *num_reqs {
+			wg.Add(1)
+			current_job += 1
+			//fmt.Println(i, "-", current_job)
+			go sendRequest(*url, i, wg)
 		}
+	}
 	wg.Wait()
 }
 
@@ -263,8 +263,8 @@ func parseCookieFile() []*http.Cookie {
 				if len(key_value) == 2 {
 					c.Name = key_value[0]
 					c.Value = key_value[1]
-				}else{
-					if key_value[0] == "HttpOnly"{
+				} else {
+					if key_value[0] == "HttpOnly" {
 						c.HttpOnly = true
 					}
 				}
