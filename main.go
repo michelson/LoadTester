@@ -1,11 +1,16 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
+	"runtime"
+	"strings"
 	"sync"
 	"time"
 )
@@ -13,9 +18,14 @@ import (
 // Flags
 var (
 	num_reqs    = flag.Int64("n", 10, "Number of requests.")
-	concurrency = flag.Int("c", 1, "Concurrency for requests")
+	concurrency = flag.Int("c", 1, "Number of multiple requests to perform at a time. Default is one request at a time.")
 	url         = flag.String("u", "", "Url to send requests")
 	verbose     = flag.Bool("v", false, "Show ongoing request results")
+	header_line = flag.String("H", "", "Custom headers name:value;name2:value2")
+	//cookie      = flag.String("C", "", "Add a Cookie: line to the request. The argument is typically in the form of a name=value pair. This field is repeatable.")
+	cookie_file  = flag.String("F", "", "Add a Cookie from plain text. The file should contain multiple cookie information separated by line")
+	auth         = flag.String("A", "", "Supply BASIC Authentication credentials to the server. The username and password are separated by a single : and sent on the wire base64 encoded. The string is sent regardless of whether the server needs it (i.e., has sent an 401 authentication needed).")
+	content_type = flag.String("T", "text/html", "Content type, default to text/html")
 )
 
 var (
@@ -33,10 +43,22 @@ var (
 	totalread         float64
 )
 
+var client = &http.Client{}
+var (
+	cookies  = make([]*http.Cookie, 0)
+	username string
+	password string
+	headers  [][]string
+)
+
 func main() {
+	runtime.GOMAXPROCS(runtime.NumCPU())
+
 	flag.Parse()
 
 	checkCommands()
+
+	checkReqOptions()
 
 	global_time["start"] = time.Now().UnixNano()
 
@@ -65,7 +87,9 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 	defer wg.Done()
 
 	start_time := time.Now().UnixNano()
-	response, err := http.Get(url)
+	//response, err := http.Get(url)
+	req := Request(url)
+	response, err := client.Do(req)
 	if err != nil {
 		if *verbose {
 			fmt.Println(err)
@@ -74,11 +98,12 @@ func sendRequest(url string, index int, wg *sync.WaitGroup) {
 	}
 
 	if response.StatusCode > 206 {
-		//addStatusCode(response.StatusCode)
+		addStatusCode(response.StatusCode)
 		non_2xx += 1
 	}
 
 	contents, err := ioutil.ReadAll(response.Body)
+	//fmt.Println(string(contents))
 	if err == nil {
 		totalread += float64(len(contents))
 		total_transferred += int64(len(contents))
@@ -121,6 +146,7 @@ func getStats() {
 	fmt.Printf("Time per request %.2f\n", TimePerRequest(seconds))
 
 	//fmt.Println(response_times)
+	//fmt.Println("status_codes", status_codes)
 	fmt.Println("Total Transfer:", total_transferred, "bytes")
 	fmt.Printf("Transfer_rate: %.3f\n", TransferRate(seconds))
 	if non_2xx > 0 {
@@ -186,6 +212,74 @@ func checkCommands() {
 	}
 }
 
+func checkReqOptions() {
+	if *cookie_file != "" {
+		cookies = parseCookieFile()
+	}
+
+	if *header_line != "" {
+		headers = parseHeaders()
+	}
+
+	if *auth != "" {
+		username, password = parseBasicAuth()
+	}
+}
+
+//parse cookie file
+func parseCookieFile() []*http.Cookie {
+	lines := ReadLines(*cookie_file)
+	cookies := make([]*http.Cookie, 0)
+	for _, line := range lines {
+		line_res := make(map[string]string)
+		options := strings.Split(line, ";")
+		for _, option := range options {
+			key_value := strings.Split(option, "=")
+			key_value[0] = strings.Trim(key_value[0], " ")
+			switch key_value[0] {
+			case "path":
+				line_res["path"] = key_value[1]
+			case "domain":
+				line_res["domain"] = key_value[1]
+			//case "expires":
+			//    line_res["expires"] = key_value[1]
+			default:
+				line_res["name"] = key_value[0]
+				line_res["value"] = key_value[1]
+			}
+		}
+		c := &http.Cookie{}
+		c.Name = line_res["name"]
+		c.Value = line_res["value"]
+		c.Domain = line_res["domain"]
+		c.Path = line_res["path"]
+		cookies = append(cookies, c)
+	}
+	//fmt.Println("cookies", cookies)
+	return cookies
+}
+
+//parse auth
+func parseBasicAuth() (string, string) {
+	auth := strings.Split(*auth, ":")
+	if len(auth) > 2 {
+		return auth[0], auth[1]
+	} else {
+		return "", ""
+	}
+}
+
+//parse headers
+func parseHeaders() [][]string {
+	options := strings.Split(*header_line, ";")
+	response := make([][]string, 0)
+	for _, option := range options {
+		o := strings.Split(option, ":")
+		response = append(response, o)
+	}
+	return response
+}
+
 func TransferRate(timetaken float64) float64 {
 	return totalread / 1024 / timetaken
 }
@@ -219,4 +313,59 @@ func addStatusCode(status_code int) {
 	if !exists {
 		status_codes = append(status_codes, status_code)
 	}
+}
+
+// REQUEST
+func Request(url string) *http.Request {
+
+	method := "GET"
+	req, _ := http.NewRequest(method, url, nil)
+
+	//update the Host value in the Request - this is used as the host header in any subsequent request
+	//req.Host = r.OriginalHost
+	req.Header.Add("Content-Type", *content_type)
+
+	for _, c := range cookies {
+		req.AddCookie(c)
+	}
+
+	if username != "" && password != "" {
+		req.SetBasicAuth(username, password)
+	}
+
+	for _, h := range headers {
+		req.Header.Add(h[0], h[1])
+	}
+
+	//resp, err := client.Do(req)
+	return req
+}
+
+func ReadLines(file string) []string {
+	f, err := os.Open(file)
+	if err != nil {
+		log.Fatal(err)
+	}
+	var response []string
+	bf := bufio.NewReader(f)
+
+	for {
+		line, isPrefix, err := bf.ReadLine()
+
+		if err == io.EOF {
+			break
+		}
+
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if isPrefix {
+			log.Fatal("Error: Unexpected long line reading", f.Name())
+		}
+
+		//fmt.Println(string(line))
+		response = append(response, string(line))
+	}
+	return response
 }

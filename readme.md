@@ -1,7 +1,6 @@
 #Load Tester:
 
-This is a simple library to test web load, right now it only supports get requests but more verbs, cookie support and basic auth are on its way.
-
+This is a simple package to benchmark http requests,  This especially shows you how many requests per second a http server is capable of serving.
 
 ##Usage:
 
@@ -9,7 +8,11 @@ Build library with ```go build main.go```
 
 ```
 Flags:
-  -c=1: Concurrency for requests
+  -A="": Supply BASIC Authentication credentials to the server. The username and password are separated by a single : and sent on the wire base64 encoded. The string is sent regardless of whether the server needs it (i.e., has sent an 401 authentication needed).
+  -F="": Add a Cookie from plain text. The file should contain multiple cookie information separated by line
+  -H="": Custom headers name:value;name2:value2
+  -T="text/html": Content type, default to text/html
+  -c=1: Number of multiple requests to perform at a time. Default is one request at a time.
   -n=10: Number of requests.
   -u="": Url to send requests
   -v=false: Show ongoing request results
@@ -35,7 +38,7 @@ Transfer_rate: 32.804
 
 ## Gotchas
 
-In OSX you could find a limit connection issue, it could be fixed by doing
+In OSX you may encounter an limit connection issue, it could be fixed by doing
 
 ```sudo launchctl limit maxfiles 1000000 1000000```
 
@@ -49,6 +52,8 @@ To make this permanent (i.e not reset when you reboot), create /etc/launchd.conf
 + Configurable Timeouts
 + Document Length
 + Classify errors by failed reqs, broken pipes and exceptions
++ Report status codes
++ Export to CSV
 + Transfer Rate
 + Change to a less boring name.
 
